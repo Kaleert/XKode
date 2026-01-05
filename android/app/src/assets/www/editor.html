@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #1e1e1e; }
+        #container { width: 100vw; height: 100vh; }
+        /* Отступ снизу для скролла */
+        .monaco-editor .lines-content { padding-bottom: 50vh !important; }
+    </style>
+    
+    <!-- Локальный загрузчик Monaco -->
+    <script src="./monaco/vs/loader.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <script>
+        // Настройка путей для Monaco (относительно этого HTML файла)
+        require.config({ paths: { 'vs': './monaco/vs' }});
+
+        require(['vs/editor/editor.main'], function() {
+            window.editor = monaco.editor.create(document.getElementById('container'), {
+                value: "", // Пусто при инициализации
+                language: 'javascript',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false }, // На телефоне мешает
+                fontSize: 14,
+                lineNumbers: 'on',
+                lineNumbersMinChars: 3,
+                glyphMargin: false,
+                folding: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'off', // Без переноса строк
+                scrollbar: {
+                    verticalScrollbarSize: 12,
+                    horizontalScrollbarSize: 12
+                }
+            });
+
+            // Слушаем сообщения от React Native (Native -> WebView)
+            var handleMessage = function(event) {
+                try {
+                    var data = JSON.parse(event.data);
+                    
+                    if (data.type === 'setCode') {
+                         var model = window.editor.getModel();
+                         
+                         // Простое определение языка по расширению
+                         var ext = data.path ? data.path.split('.').pop() : 'js';
+                         var lang = 'javascript';
+                         if(ext === 'html') lang = 'html';
+                         if(ext === 'css') lang = 'css';
+                         if(ext === 'json') lang = 'json';
+                         if(ext === 'java') lang = 'java';
+                         if(ext === 'py') lang = 'python';
+                         if(ext === 'cpp' || ext === 'c' || ext === 'h') lang = 'cpp';
+                         if(ext === 'xml') lang = 'xml';
+                         if(ext === 'md') lang = 'markdown';
+                         
+                         monaco.editor.setModelLanguage(model, lang);
+                         window.editor.setValue(data.content);
+                    }
+                } catch(e) {
+                    // console.error(e);
+                }
+            };
+
+            // Поддержка разных платформ (Android/iOS иногда по-разному шлют события)
+            document.addEventListener("message", handleMessage);
+            window.addEventListener("message", handleMessage);
+        });
+
+        // Методы для вызова из React Native (WebView -> Native)
+        window.requestSave = function() {
+            if (window.editor && window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'save',
+                    content: window.editor.getValue()
+                }));
+            }
+        };
+        
+        // Вставка текста с виртуальной клавиатуры
+        window.insertText = function(text) {
+            if (window.editor) {
+                var selection = window.editor.getSelection();
+                var op = {identifier: {major:1, minor:1}, range: selection, text: text, forceMoveMarkers: true};
+                window.editor.executeEdits("my-source", [op]);
+                window.editor.focus();
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+# CodeAnalyzer Configuration
+exclude:
+  # Системные и временные файлы
+  - ".git/**"
+  - ".vscode/**"
+  - ".gradle/**"
+  - ".expo/**"
+  - ".idea/**"
+  - "build/**"
+  - "tmp/**"
+  - "*.log"
+  - "*.tmp"
+  - "*.swp"
+  - "*.swo"
+  - "*~"
+  
+  # Файлы проекта
+  - "gradlew"
+  - "gradlew.bat"
+  - "gradle/wrapper/gradle-wrapper.properties"
+  - "node_modules/**"
+  
+  # Конфигурационные и служебные файлы
+  - "analyzer.yml"
+  - "*.txt"
+  - "code_analiz"
+  - "scripts/**"
+  - "hooks/**"
+  
+  # Исходные коды и ресурсы (если нужно исключить)
+  - "oldSrc/**"
+  - "lang/**"
+  - "assets/**"  # добавлено
+  
+  # Исполняемые файлы
+  - "run"
+  - "split*"
+  - "android/app/build/**"
+  - "android/build**"
+  - "android/gradle*"
+  - "android/app/debug.keystore"
+  - "android/app/src/assets/www/monaco"
+  - "android/app/src/main/res/**"
+  - "android/app/src/assets/www/xterm"
+  - "android/gradle.properties.*"
+  - "android/app/src/debugOptimized/**"
+  - "android/app/src/debug/**"
+  # Дополнительные исключения для вашего проекта
+#  - "android/**"  # папка Android нативного кода
+  - "ios/**"      # папка iOS нативного кода (если есть)
+#  - "eas.json"    # конфиг Expo Application Services
+#  - "app.json"    # конфиг Expo (можно оставить если нужно анализировать)
+  - "tsconfig.json" # конфиг TypeScript
+  - "eslint.config.js" # конфиг ESLint
+  - "package*.json" # package.json и package-lock.json
+  
+  # Временные файлы IDE
+  - ".DS_Store"
+  - "Thumbs.db"
+  
+  # Документация
+  - "README.md"
+  
+  - "components/**"
+  - ".gitignore"
+  - "expo-env.d.ts"
+  - "constants/**"
+
+include: {}
+
+filename: "split_tide.txt"
+separator: "/* %path% */"
+skipBinary: true
+encoding: "utf-8"
+
+# Настройки разделения
+splitIntoParts: 1
+
+# Максимальный размер файла в МБ (0 = без ограничений)
+maxFileSize: 10
+
+# Фильтрация по расширениям (пустой список = все расширения)
+includeExtensions: {}
+excludeExtensions: {}
+
+# Настройки анализа
+countEmptyLines: true
+showFileStats: true
+addTimestamp: true
+addHeader: true
+lineEndings: "unix"  # preserve, unix, windows
+verbose: true
+
+# Новые настройки для анализа кода
+scanTodos: true
+minCommentLength: 10
+showTodosInStats: true
+analyzeCodeQuality: true
+complexityThreshold: 150
+outputFormat: "text"
+
+analyzeComplexity: true
+findHotspots: true
+techDebtAnalysis: true

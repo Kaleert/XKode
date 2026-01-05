@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { margin: 0; background: #1e1e1e; overflow: hidden; }
+        #terminal { width: 100vw; height: 100vh; }
+        /* Шрифт как в Termux */
+        .xterm-rows { 
+            font-family: monospace, 'Courier New' !important; 
+            font-size: 14px !important; 
+        }
+    </style>
+    
+    <!-- Подключение локальных файлов -->
+    <link rel="stylesheet" href="./xterm/xterm.css" />
+    <script src="./xterm/xterm.js"></script>
+    <script src="./xterm/xterm-addon-fit.js"></script>
+</head>
+<body>
+    <div id="terminal"></div>
+    
+    <script>
+        // Проверка, что файлы загрузились
+        if (typeof Terminal === 'undefined') {
+            document.body.innerHTML = '<h3 style="color:red">Error: xterm.js not loaded. Check assets path.</h3>';
+        }
+
+        var term = new Terminal({
+            fontFamily: 'monospace', 
+            fontSize: 14, 
+            cursorBlink: true,
+            theme: { background: '#1e1e1e', selection: '#264f78', cursor: '#007acc' },
+            allowProposedApi: true
+        });
+
+        var fit = new FitAddon.FitAddon();
+        term.loadAddon(fit);
+        term.open(document.getElementById('terminal'));
+        
+        // Небольшая задержка для корректного расчета размеров
+        setTimeout(function() {
+            fit.fit();
+        }, 100);
+
+        window.term = term;
+
+        // Перехват ввода (если печатаем прямо в терминал)
+        // Для отправки используем window.ReactNativeWebView (стандарт для React Native WebView)
+        term.onData(function(data) {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({type: 'input', data: data}));
+            }
+        });
+
+        // Адаптация при повороте экрана
+        window.addEventListener('resize', function() {
+            fit.fit();
+        });
+    </script>
+</body>
+</html>
