@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # Позволяет запускать сборку вручную с кнопки (экономит квоту)
   push:
     branches:
-      - main # Или master, если ветка называется так
+      - master # Или master, если ветка называется так
 
 jobs:
   build:
