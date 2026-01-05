@@ -40,7 +40,7 @@ jobs:
       - name: Build Debug APK
         working-directory: android
         # Собираем APK. --no-daemon экономит память на CI
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
