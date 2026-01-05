@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as SplashScreen from 'expo-splash-screen';
 
 // Сплеши с весами (шанс появления)
 const SPLASHES = [
@@ -35,10 +34,6 @@ export default function CustomSplash({ onFinish }) {
     const textGlowAnim = useRef(new Animated.Value(0)).current;
     const [splashData] = useState(getRandomSplash());
     const [dots, setDots] = useState('');
-
-    useEffect(() => {
-        SplashScreen.hideAsync(); 
-    }, []);
     
     // Анимация точек
     useEffect(() => {
