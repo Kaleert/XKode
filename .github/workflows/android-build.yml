@@ -33,9 +33,6 @@ jobs:
       - name: Install Dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Prebuild (Expo Config)
-        run: npx expo prebuild --platform android --no-install
-
       - name: Grant Execute Permission for Gradlew
         working-directory: android
         run: chmod +x gradlew

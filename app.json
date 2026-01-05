@@ -42,16 +42,6 @@
         }
       ],
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "resizeMode": "contain",
-          "backgroundColor": "#1e1e1e",
-          "dark": {
-            "backgroundColor": "#1e1e1e"
-          }
-        }
-      ],
       "expo-build-properties"
     ],
     "experiments": {
