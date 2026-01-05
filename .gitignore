@@ -43,3 +43,5 @@ app-example
 #/android
 code_analiz
 analyzer.yml
+server.js
+important_comments.txt
