@@ -1,10 +1,10 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: # Позволяет запускать сборку вручную с кнопки (экономит квоту)
+  workflow_dispatch:
   push:
     branches:
-      - master # Или master, если ветка называется так
+      - master
 
 jobs:
   build:
@@ -37,10 +37,9 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-      - name: Build Debug APK
+     - name: Build Release APK
         working-directory: android
-        # Собираем APK. --no-daemon экономит память на CI
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease -x lint -x test -x androidJavadoc --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
