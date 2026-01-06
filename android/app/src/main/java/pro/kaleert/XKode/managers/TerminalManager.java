@@ -1,6 +1,7 @@
-/* android/app/src/main/java/pro/kaleert/XKode/managers/TerminalManager.java */
-
 package pro.kaleert.XKode.managers;
+
+import android.os.Handler;
+import android.os.Looper;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -18,11 +19,19 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+// Импортируем наш нативный компонент
+import pro.kaleert.XKode.views.ConsoleView;
+
 public class TerminalManager {
     
     private static TerminalManager instance;
     private final ReactApplicationContext reactContext;
+    
+    // Хранение сессий SSH
     private final Map<String, TerminalSession> sessions = new ConcurrentHashMap<>();
+    
+    // Хранение активных UI-компонентов (чтобы писать в них напрямую)
+    private final Map<String, ConsoleView> activeViews = new ConcurrentHashMap<>();
 
     private TerminalManager(ReactApplicationContext context) {
         this.reactContext = context;
@@ -35,19 +44,31 @@ public class TerminalManager {
         return instance;
     }
 
-    // Внутренний класс для хранения состояния одной сессии
+    // --- VIEW REGISTRATION ---
+
+    public void registerView(String id, ConsoleView view) {
+        activeViews.put(id, view);
+        // Если бы у нас был буфер истории, мы могли бы его здесь восстановить
+    }
+
+    public void unregisterView(String id) {
+        activeViews.remove(id);
+    }
+
+    // --- SESSION CLASS ---
+
     private static class TerminalSession {
         String id;
         Session jschSession;
         ChannelShell channel;
-        Process localProcess;
         InputStream in;
         OutputStream out;
         Thread reader;
         boolean isRunning = true;
     }
 
-    // SSH Connect
+    // --- SSH MANAGEMENT ---
+
     public void startSsh(String id, String host, int port, String user, String pass) {
         new Thread(() -> {
             TerminalSession session = new TerminalSession();
@@ -58,10 +79,17 @@ public class TerminalManager {
                 s.setPassword(pass);
                 Properties config = new Properties();
                 config.put("StrictHostKeyChecking", "no");
+                // Оптимизация для скорости
+                config.put("PreferredAuthentications", "password,keyboard-interactive,publickey");
+                config.put("compression.s2c", "zlib,none"); 
+                config.put("compression.c2s", "zlib,none");
+                
                 s.setConfig(config);
                 s.connect(10000);
 
                 ChannelShell ch = (ChannelShell) s.openChannel("shell");
+                // PTY Type: xterm для поддержки цветов и курсора
+                ch.setPtyType("xterm"); 
                 ch.setPty(true);
                 ch.connect();
 
@@ -71,49 +99,28 @@ public class TerminalManager {
                 session.out = ch.getOutputStream();
 
                 sessions.put(id, session);
-                emitData(id, "Connected to " + host + "\r\n");
-                startReader(session);
-
-            } catch (Exception e) {
-                emitData(id, "SSH Error: " + e.getMessage() + "\r\n");
-            }
-        }).start();
-    }
-
-    // Local Shell
-    public void startLocal(String id) {
-        new Thread(() -> {
-            TerminalSession session = new TerminalSession();
-            session.id = id;
-            try {
-                // Пытаемся запустить шелл. В обычном андроиде это ограничено,
-                // но базовые команды (ls, cd) сработают, если путь к sh верный.
-                ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
-                pb.redirectErrorStream(true);
-                Map<String, String> env = pb.environment();
-                env.put("TERM", "xterm-256color");
                 
-                Process p = pb.start();
-                session.localProcess = p;
-                session.in = p.getInputStream();
-                session.out = p.getOutputStream();
-
-                sessions.put(id, session);
-                emitData(id, "Local Shell Started\r\n");
+                // Приветственное сообщение
+                emitData(id, "Connected to " + host + " (XKode Native)\r\n");
+                
                 startReader(session);
 
             } catch (Exception e) {
-                emitData(id, "Local Shell Error: " + e.getMessage() + "\r\n");
+                emitData(id, "SSH Connection Error: " + e.getMessage() + "\r\n");
             }
         }).start();
     }
 
-    // Write Data
+    // Local Shell удален по запросу
+
+    // --- INPUT/OUTPUT ---
+
     public void write(String id, String data) {
         TerminalSession s = sessions.get(id);
         if (s != null && s.out != null) {
             new Thread(() -> {
                 try {
+                    // Важно: пишем байты UTF-8, чтобы работала кириллица
                     s.out.write(data.getBytes(StandardCharsets.UTF_8));
                     s.out.flush();
                 } catch (IOException e) {
@@ -123,7 +130,6 @@ public class TerminalManager {
         }
     }
 
-    // Close
     public void close(String id) {
         TerminalSession s = sessions.get(id);
         if (s != null) {
@@ -131,19 +137,19 @@ public class TerminalManager {
             try {
                 if (s.channel != null) s.channel.disconnect();
                 if (s.jschSession != null) s.jschSession.disconnect();
-                if (s.localProcess != null) s.localProcess.destroy();
             } catch (Exception ignored) {}
             sessions.remove(id);
+            activeViews.remove(id); // Удаляем ссылку на View
         }
     }
 
-    // Reader Thread
     private void startReader(TerminalSession s) {
         s.reader = new Thread(() -> {
-            byte[] buf = new byte[4096];
+            byte[] buf = new byte[8192]; // Буфер побольше
             int len;
             try {
                 while (s.isRunning && (len = s.in.read(buf)) != -1) {
+                    // Читаем сырые данные
                     String text = new String(buf, 0, len, StandardCharsets.UTF_8);
                     emitData(s.id, text);
                 }
@@ -156,9 +162,21 @@ public class TerminalManager {
         s.reader.start();
     }
 
-    // Event Emitter
+    // --- DATA DISPATCHER ---
+
     private void emitData(String id, String data) {
-        if (reactContext.hasActiveCatalystInstance()) {
+        ConsoleView view = activeViews.get(id);
+        if (view != null) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                try {
+                    view.appendText(data);
+                } catch (Exception e) {
+                    // Игнорируем ошибки UI обновлений если view умерла
+                }
+            });
+        }
+
+        if (reactContext != null && reactContext.hasActiveCatalystInstance()) {
             WritableMap params = Arguments.createMap();
             params.putString("sessionId", id);
             params.putString("data", data);

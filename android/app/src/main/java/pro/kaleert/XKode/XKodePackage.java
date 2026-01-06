@@ -12,7 +12,7 @@ import java.util.List;
 public class XKodePackage implements ReactPackage {
     @Override
     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
-        return Collections.emptyList();
+        return return Collections.singletonList(new pro.kaleert.XKode.views.TerminalViewManager());
     }
 
     @Override
